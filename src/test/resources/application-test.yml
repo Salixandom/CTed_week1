@@ -1,0 +1,28 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: password
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    database-platform: org.hibernate.dialect.H2Dialect
+    show-sql: false
+
+  sql:
+    init:
+      mode: never
+
+# JWT Configuration for testing
+jwt:
+  secret: heheBoiiTestingPurposeButLongTokenCauseChotoKajKoreNa
+  expiration: 3600000  # 1 hour for tests
+
+# Logging for tests
+logging:
+  level:
+    com.enterprise.user_management: WARN
+    org.springframework.security: WARN
+    org.hibernate: WARN

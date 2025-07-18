@@ -15,6 +15,11 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.Arrays;
 
 @Configuration
 @EnableWebSecurity
@@ -35,8 +40,22 @@ public class SecurityConfig {
     }
 
     @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(Arrays.asList("http://localhost:4200"));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
+        configuration.setAllowedHeaders(Arrays.asList("*"));
+        configuration.setAllowCredentials(true);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/api/**", configuration);
+        return source;
+    }
+
+    @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
+                .cors(cors -> cors.configurationSource(corsConfigurationSource())) // Add CORS support
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
@@ -44,10 +63,25 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/users/health").permitAll()
 
-                        // User registration - FIXED: Added leading slash and proper HttpMethod
+                        // User registration
                         .requestMatchers(HttpMethod.POST, "/api/users").permitAll()
 
-                        // Swagger/OpenAPI endpoints - EXPANDED to cover all SpringDoc paths
+                        // ==== TEMPORARY FOR DEVELOPMENT (Day 10-12 Frontend Integration) ====
+                        // TODO: Remove these permits after authentication is implemented in frontend
+                        .requestMatchers(HttpMethod.GET, "/api/users").permitAll()        // Get paginated users
+                        .requestMatchers(HttpMethod.GET, "/api/users/all").permitAll()   // Get all users
+                        .requestMatchers(HttpMethod.GET, "/api/users/stats").permitAll() // Get user stats
+                        .requestMatchers(HttpMethod.GET, "/api/users/search").permitAll() // Search users
+                        .requestMatchers(HttpMethod.GET, "/api/users/*").permitAll()     // Get user by ID (FIXED: removed trailing slash)
+                        .requestMatchers(HttpMethod.GET, "/api/users/username/*").permitAll() // Get by username
+                        .requestMatchers(HttpMethod.GET, "/api/users/role/*").permitAll() // Get by role
+                        .requestMatchers(HttpMethod.PUT, "/api/users/*").permitAll()     // Update user (Day 12)
+                        .requestMatchers(HttpMethod.PATCH, "/api/users/*/activate").permitAll() // Activate user
+                        .requestMatchers(HttpMethod.PATCH, "/api/users/*/deactivate").permitAll() // Deactivate user
+                        .requestMatchers(HttpMethod.DELETE, "/api/users/*").permitAll()  // Delete user (Day 12)
+                        // ===================================================================
+
+                        // Swagger/OpenAPI endpoints
                         .requestMatchers("/swagger-ui/**").permitAll()
                         .requestMatchers("/swagger-ui.html").permitAll()
                         .requestMatchers("/v3/api-docs/**").permitAll()
@@ -64,9 +98,8 @@ public class SecurityConfig {
                         // Static resources
                         .requestMatchers("/css/**", "/js/**", "/images/**", "/favicon.ico").permitAll()
 
-                        // Admin only endpoints
-                        .requestMatchers("/api/users/*/activate", "/api/users/*/deactivate").hasRole("ADMIN")
-                        .requestMatchers("/api/users/stats").hasAnyRole("ADMIN", "MANAGER")
+                        // Admin only endpoints (keep these protected)
+                        // Note: Activate/deactivate are now temporarily allowed above for development
 
                         // All other requests require authentication
                         .anyRequest().authenticated()
